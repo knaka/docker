@@ -1721,10 +1721,10 @@ func TestBuildWithInaccessibleFilesInContext(t *testing.T) {
 			t.Fatalf("failed to chown directory to root: %s", err)
 		}
 		if err = os.Chmod(pathToDirectoryWithoutReadAccess, 0444); err != nil {
-			t.Fatalf("failed to chmod directory to 755: %s", err)
+			t.Fatalf("failed to chmod directory to 444: %s", err)
 		}
 		if err = os.Chmod(pathToFileInDirectoryWithoutReadAccess, 0700); err != nil {
-			t.Fatalf("failed to chmod file to 444: %s", err)
+			t.Fatalf("failed to chmod file to 700: %s", err)
 		}
 
 		buildCmd := exec.Command("su", "unprivilegeduser", "-c", fmt.Sprintf("%s build -t %s .", dockerBinary, name))
@@ -2291,6 +2291,27 @@ func TestBuildExposeOrder(t *testing.T) {
 		t.Errorf("EXPOSE should invalidate the cache only when ports actually changed")
 	}
 	logDone("build - expose order")
+}
+
+func TestBuildExposeUpperCaseProto(t *testing.T) {
+	name := "testbuildexposeuppercaseproto"
+	expected := "map[5678/udp:map[]]"
+	defer deleteImages(name)
+	_, err := buildImage(name,
+		`FROM scratch
+        EXPOSE 5678/UDP`,
+		true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := inspectField(name, "Config.ExposedPorts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res != expected {
+		t.Fatalf("Exposed ports %s, expected %s", res, expected)
+	}
+	logDone("build - expose port with upper case proto")
 }
 
 func TestBuildEmptyEntrypointInheritance(t *testing.T) {
